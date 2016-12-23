@@ -10,7 +10,7 @@ $ go run main.go
 Set browser's SOCKS proxy to localhost:8080
 ```
 
-![Screenshot]{demo.png}
+![Screenshot](demo.png)
 
 
 
