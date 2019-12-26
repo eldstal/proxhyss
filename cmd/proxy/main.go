@@ -12,7 +12,7 @@ import (
 
 func main() {
 
-  hats := proxhyss.InitHats("../hats")
+  hats := proxhyss.InitHats("hats")
   
   proxy := goproxy.NewProxyHttpServer()
   proxy.OnResponse().Do(goproxy_image.HandleImage(func(img image.Image, ctx *goproxy.ProxyCtx) image.Image {
