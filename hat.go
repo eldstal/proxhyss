@@ -1,13 +1,10 @@
 package proxhyss;
 
-//#cgo pkg-config: opencv
-//#include "detect.hpp"
-import "C"
-
 import (
-  "github.com/jeromelesaux/facedetection/facedetector"
   "github.com/fogleman/gg"
   "github.com/nfnt/resize"
+  "gocv.io/x/gocv"
+
   "fmt"
   "image"
   //"image/color"
@@ -50,48 +47,40 @@ func (db HatDB) getScaledHat(width uint) (image.Image) {
 }
 
 
-func oldDetectFaces(img image.Image) []image.Rectangle {
-
-    // Detect face rectangles (spelling error in API)
-    f := facedetector.NewFaceDectectorFromImage(img)
-
-    rects := f.GetFaces()
-
-    var ret = make([]image.Rectangle, 0, len(rects))
-
-    for _,r := range rects {
-      ret = append(ret, image.Rect(r.X, r.Y, r.X+r.Width, r.Y+r.Height))
-    }
-
-    return ret
-}
-
-
 func detectFaces(img image.Image) []image.Rectangle {
-  maxfaces := 10
-  ret := make([]image.Rectangle, 0, maxfaces)
 
-  found_faces := make([]C.struct_Face, maxfaces);
-
-  C.TestFunc()
-  nfaces := int(C.FindFaces(nil,
-                C.int(img.Bounds().Dy()), C.int(img.Bounds().Dx()),
-                &found_faces[0], C.int(len(found_faces))))
+  xmlFile := "haarcascade_frontalface_default.xml"
 
 
-  for f:=0; f<nfaces; f++ {
-    fmt.Printf("(%v,%v) (%v,%v)\n",
-                found_faces[f].x1, found_faces[f].y1,
-                found_faces[f].x2, found_faces[f].y2)
+  // prepare image matrix
+  mat,err := gocv.ImageToMatRGBA(img)
+  if err != nil {
+    fmt.Printf("Error converting image to matrix")
+    ret := make([]image.Rectangle, 0, 1)
+    return ret
+  }
+  defer mat.Close()
+
+  // load classifier to recognize faces
+  classifier := gocv.NewCascadeClassifier()
+  defer classifier.Close()
+
+  if !classifier.Load(xmlFile) {
+    fmt.Printf("Error reading cascade file: %v\n", xmlFile)
+    ret := make([]image.Rectangle, 0, 1)
+    return ret
   }
 
+  // detect faces
+  rects := classifier.DetectMultiScale(mat)
+  fmt.Printf("found %d faces\n", len(rects))
 
-  return ret
+  return rects
 }
 
 func (self HatDB) ApplyHats(img image.Image) image.Image {
 
-    rects := oldDetectFaces(img);
+    rects := detectFaces(img);
 
     draw := gg.NewContextForImage(img)
     draw.SetLineWidth(3)
