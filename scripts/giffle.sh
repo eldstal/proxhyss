@@ -11,5 +11,5 @@ cd "${ROOTDIR}"
 mkdir -p "${GIFDIR}"
 
 go build cmd/pepparkak/pepparkak.go
-./pepparkak ${GIFDIR}
+./pepparkak -tag nope -color_match -dir ${GIFDIR}
 

@@ -7,7 +7,8 @@ import (
 
   "fmt"
   "image"
-  //"image/color"
+  "image/color"
+  "image/draw"
 
   "path/filepath"
   "io/ioutil"
@@ -174,7 +175,7 @@ func detectFaces_legacy(img image.Image) []image.Rectangle {
   return rects
 }
 
-func (self HatDB) ApplyHats(img image.Image) (image.Image, int) {
+func (self HatDB) ApplyHatsColorMatched(img image.Image, color_match_hats bool, color_match_palette *color.Palette) (image.Image, int) {
 
     // This DNN detector seems to work better than the haarcascade one
     rects := detectFaces_dnn(img);
@@ -183,9 +184,9 @@ func (self HatDB) ApplyHats(img image.Image) (image.Image, int) {
     //fmt.Printf("old: %v, new: %v faces\n", len(old_rects), len(rects))
 
 
-    draw := gg.NewContextForImage(img)
-    draw.SetLineWidth(3)
-    draw.SetRGB(0,1,0)
+    draw_context := gg.NewContextForImage(img)
+    draw_context.SetLineWidth(3)
+    draw_context.SetRGB(0,1,0)
 
     for _, head := range rects {
       //fmt.Printf("%v\n", head)
@@ -194,14 +195,27 @@ func (self HatDB) ApplyHats(img image.Image) (image.Image, int) {
       head_width := head.Max.X - head.Min.X
       pix := self.getScaledHat(uint(head_width * 3))
 
+      // Force the hat to use the colors in the color match palette
+      if (color_match_hats) {
+        matched_hat := image.NewPaletted(pix.Bounds(), *color_match_palette)
+        draw.Draw(matched_hat, matched_hat.Bounds(), pix, image.ZP, draw.Over)
+
+        new_hat := image.NewRGBA(pix.Bounds())
+        draw.DrawMask(new_hat, new_hat.Bounds(), matched_hat, image.ZP, pix, image.ZP, draw.Over)
+        pix = new_hat
+      }
+
       // Fit the hat to the head
-      draw.DrawImageAnchored(pix, (head.Min.X + head.Max.X)/2, head.Min.Y, 0.5, 0.5)
+      draw_context.DrawImageAnchored(pix, (head.Min.X + head.Max.X)/2, head.Min.Y, 0.5, 0.5)
 
 
     }
 
 
-  return draw.Image(), len(rects)
+  return draw_context.Image(), len(rects)
 }
 
 
+func (self HatDB) ApplyHats(img image.Image) (image.Image, int) {
+  return self.ApplyHatsColorMatched(img, false, nil)
+}

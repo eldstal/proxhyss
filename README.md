@@ -33,3 +33,4 @@ For external convenience, check out `scripts/giffle.sh`
 
 Additionally with `-export_gif`, the hatted gif is re-combined as `hat.gif` in the same directory
 
+With `-color_match`, the hat is forced to follow the palette of the original GIF, giving a sort of color scheme matching effect. For example, a grayscale GIF will get a gray hat.

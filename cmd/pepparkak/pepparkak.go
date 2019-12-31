@@ -17,6 +17,7 @@ import (
 func main() {
 
   var export_gif = flag.Bool("export_gif", false, "Also export an animated GIF")
+  var color_match_hat = flag.Bool("color_match", false, "Match hat to original color palette")
   var search_tag = flag.String("tag", "nope", "Search term for new GIFs")
   var show = flag.Bool("show", false, "Also show the generated frames in a window")
   var out_dir = flag.String("dir", "/tmp/pepparkak", "Directory to put output files in. Will be created.")
@@ -58,7 +59,9 @@ func main() {
     fmt.Printf("Finding faces in %d frames...\n", len(frames))
 
     for i, frame := range(frames) {
-      hatted,n := hats.ApplyHats(frame)
+      var palette = GIF.Image[i].Palette
+
+      hatted,n := hats.ApplyHatsColorMatched(frame, *color_match_hat, &palette)
       new_frames[i] = hatted
       if (n == 0) {
         // No non-hat frames, please
