@@ -18,7 +18,7 @@ func main() {
   proxy.OnResponse().Do(goproxy_image.HandleImage(func(img image.Image, ctx *goproxy.ProxyCtx) image.Image {
 
     //fmt.Printf("%v\n", ctx.Req.URL)
-    nimg := hats.ApplyHats(img);
+    nimg,_ := hats.ApplyHats(img);
 
     return nimg
   }))

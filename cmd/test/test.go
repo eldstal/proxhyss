@@ -27,7 +27,7 @@ func main() {
       panic(err.Error())
     }
 
-    hatted := hats.ApplyHats(img)
+    hatted,_ := hats.ApplyHats(img)
 
     mat,_ := gocv.ImageToMatRGBA(hatted)
     window.IMShow(mat)

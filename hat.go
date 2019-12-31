@@ -46,10 +46,106 @@ func (db HatDB) getScaledHat(width uint) (image.Image) {
   return resize.Resize(width, 0, *orig_hat, resize.NearestNeighbor)
 }
 
+func min(a, b float32) float32 {
+	if a < b {
+		return a
+	}
+	return b
+}
 
-func detectFaces(img image.Image) []image.Rectangle {
+func max(a, b float32) float32 {
+	if a > b {
+		return a
+	}
+	return b
+}
 
-  xmlFile := "haarcascade_frontalface_default.xml"
+func detectFaces_dnn(img image.Image) []image.Rectangle {
+
+	ret := make([]image.Rectangle, 0, 1)
+
+	proto := "params/deploy.prototxt"
+	model := "params/res10_300x300_ssd_iter_140000_fp16.caffemodel"
+
+	mat,_ := gocv.ImageToMatRGB(img)
+
+	// open DNN classifier
+	net := gocv.ReadNet(proto, model)
+	if net.Empty() {
+		fmt.Printf("Error reading network model from : %v %v\n", proto, model)
+		return ret
+	}
+	defer net.Close()
+
+	//green := color.RGBA{0, 255, 0, 0}
+
+	W := float32(mat.Cols())
+	H := float32(mat.Rows())
+
+	// convert image Mat to 300x300 blob that the detector can analyze
+	blob := gocv.BlobFromImage(mat, 1.0,
+                             image.Pt(300,300),
+                             gocv.NewScalar(104, 177, 123, 0),
+														 false, false)
+	defer blob.Close()
+
+	// feed the blob into the classifier
+	net.SetInput(blob, "")
+
+	// run a forward pass through the network
+	detBlob := net.Forward("")
+	defer detBlob.Close()
+
+	// extract the detections.
+	// for each object detected, there will be 7 float features:
+	// objid, classid, confidence, left, top, right, bottom.
+	detections := gocv.GetBlobChannel(detBlob, 0, 0)
+	defer detections.Close()
+
+	var confidence_threshold float32 = 0.5
+	n_good_detections := 0
+
+	for r := 0; r < detections.Rows(); r++ {
+		confidence := detections.GetFloatAt(r, 2)
+		if confidence < confidence_threshold {
+			continue
+		}
+		n_good_detections += 1
+	}
+
+	ret = make([]image.Rectangle, n_good_detections, n_good_detections)
+	index := 0
+
+	for r := 0; r < detections.Rows(); r++ {
+		confidence := detections.GetFloatAt(r, 2)
+		if confidence < confidence_threshold {
+			continue
+		}
+
+		left := detections.GetFloatAt(r, 3) * W
+		top := detections.GetFloatAt(r, 4) * H
+		right := detections.GetFloatAt(r, 5) * W
+		bottom := detections.GetFloatAt(r, 6) * H
+
+		// scale to video size:
+		left = min(max(0, left), W-1)
+		right = min(max(0, right), W-1)
+		bottom = min(max(0, bottom), H-1)
+		top = min(max(0, top), H-1)
+
+		// draw it
+		ret[index] = image.Rect(int(left), int(top), int(right), int(bottom))
+		index += 0
+	}
+
+	return ret
+
+}
+
+
+func detectFaces_legacy(img image.Image) []image.Rectangle {
+
+  xmlFile := "params/haarcascade_frontalface_default.xml"
 
 
   // prepare image matrix
@@ -78,9 +174,14 @@ func detectFaces(img image.Image) []image.Rectangle {
   return rects
 }
 
-func (self HatDB) ApplyHats(img image.Image) image.Image {
+func (self HatDB) ApplyHats(img image.Image) (image.Image, int) {
 
-    rects := detectFaces(img);
+    // This DNN detector seems to work better than the haarcascade one
+    rects := detectFaces_dnn(img);
+
+    //old_rects := detectFaces_legacy(img);
+    //fmt.Printf("old: %v, new: %v faces\n", len(old_rects), len(rects))
+
 
     draw := gg.NewContextForImage(img)
     draw.SetLineWidth(3)
@@ -88,14 +189,6 @@ func (self HatDB) ApplyHats(img image.Image) image.Image {
 
     for _, head := range rects {
       fmt.Printf("%v\n", head)
-
-      /*
-      draw.DrawRectangle(float64(head.Min.X),
-                         float64(head.Min.Y),
-                         float64(head.Max.X-head.Min.X),
-                         float64(head.Max.Y-head.Min.Y))
-      draw.Stroke()
-      */
 
       // Select a hat and scale it to the head's size
       head_width := head.Max.X - head.Min.X
@@ -108,7 +201,7 @@ func (self HatDB) ApplyHats(img image.Image) image.Image {
     }
 
 
-  return draw.Image()
+  return draw.Image(), len(rects)
 }
 
 
