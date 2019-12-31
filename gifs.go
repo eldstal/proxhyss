@@ -11,7 +11,7 @@ import (
   //"io/ioutil"
   "image/gif"
   "image/draw"
-  "image/color/palette"
+  //"image/color/palette"
 )
 
 type GiphyConfig struct {
@@ -135,7 +135,7 @@ func GifRepack(GIF *gif.GIF, new_frames []image.Image) {
     bounds := f.Bounds()
 
     // TODO: Pick a better palette somehow. WebSafe looks like 1994.
-    ugly_frame := image.NewPaletted(bounds, palette.WebSafe)
+    ugly_frame := image.NewPaletted(bounds, GIF.Image[i].Palette)
     draw.Draw(ugly_frame, ugly_frame.Rect, f, bounds.Min, draw.Over)
 
     GIF.Image[i] = ugly_frame

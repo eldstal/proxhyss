@@ -115,7 +115,6 @@ func main() {
 
   // Repack the animated GIF and export that too, for fun
   if (*export_gif) {
-    proxhyss.GifRepack(GIF, new_frames)
 
     path := filepath.Join(*out_dir, "hats.gif")
     fmt.Printf("Exporting: %s\n", path)
@@ -126,6 +125,7 @@ func main() {
     }
     defer f.Close()
 
+    proxhyss.GifRepack(GIF, new_frames)
     gif.EncodeAll(f, GIF)
   }
 }
