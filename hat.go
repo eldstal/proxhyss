@@ -188,7 +188,7 @@ func (self HatDB) ApplyHats(img image.Image) (image.Image, int) {
     draw.SetRGB(0,1,0)
 
     for _, head := range rects {
-      fmt.Printf("%v\n", head)
+      //fmt.Printf("%v\n", head)
 
       // Select a hat and scale it to the head's size
       head_width := head.Max.X - head.Min.X

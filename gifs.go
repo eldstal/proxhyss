@@ -11,6 +11,7 @@ import (
   //"io/ioutil"
   "image/gif"
   "image/draw"
+  "image/color/palette"
 )
 
 type GiphyConfig struct {
@@ -80,7 +81,7 @@ func GifRender(GIF *gif.GIF) []image.Image {
 
 }
 
-func GifGet(tag string) []image.Image {
+func GifGet(tag string) ([]image.Image, *gif.GIF) {
 
   var src io.Reader
   ret := make([]image.Image,0,1)
@@ -89,7 +90,7 @@ func GifGet(tag string) []image.Image {
     metadata, err := GIPHY.GetRandom(tag)
     if err != nil {
       fmt.Println("Giphy error:", err)
-      return ret
+      return ret,nil
     }
 
     url := metadata.Data.Image_original_url
@@ -98,7 +99,7 @@ func GifGet(tag string) []image.Image {
     resp, err := http.Get(url)
     if err != nil {
       fmt.Println("Unable to download %+v", url)
-      return ret
+      return ret,nil
     }
     defer resp.Body.Close()
     src = resp.Body
@@ -106,7 +107,7 @@ func GifGet(tag string) []image.Image {
     file, err := os.Open("/tmp/giphy.gif")
     if err != nil {
       fmt.Println("Unable to load /tmp/giphy.gif")
-      return ret
+      return ret,nil
     }
     defer file.Close()
     src = file
@@ -116,11 +117,28 @@ func GifGet(tag string) []image.Image {
   GIF,err := gif.DecodeAll(src)
   if err != nil {
     fmt.Println("Unable to decode GIF")
-    return ret
+    return ret,nil
   }
 
   ret = GifRender(GIF)
 
-  return ret
+  return ret,GIF
 
 }
+
+func GifRepack(GIF *gif.GIF, new_frames []image.Image) {
+  if len(GIF.Image) != len(new_frames) {
+    fmt.Printf("Tried to repack a gif with the wrong number of frames. boo.")
+  }
+
+  for i,f := range new_frames {
+    bounds := f.Bounds()
+
+    // TODO: Pick a better palette somehow. WebSafe looks like 1994.
+    ugly_frame := image.NewPaletted(bounds, palette.WebSafe)
+    draw.Draw(ugly_frame, ugly_frame.Rect, f, bounds.Min, draw.Over)
+
+    GIF.Image[i] = ugly_frame
+  }
+}
+
